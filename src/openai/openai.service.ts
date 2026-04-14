@@ -1,26 +1,80 @@
-import { ChatOpenAI } from '@langchain/openai';
 import { Injectable } from '@nestjs/common';
-import { HumanMessage, SystemMessage } from 'langchain';
+import { ChatOpenAI, OpenAIEmbeddings } from '@langchain/openai';
+import { HumanMessage, SystemMessage } from '@langchain/core/messages';
+import { QdrantClientService } from 'src/db/qdrant/qdrant.service';
 
 @Injectable()
 export class OpenaiService {
-  private model: ChatOpenAI;
+  private chatModel: ChatOpenAI;
+  private embeddingModel: OpenAIEmbeddings;
+  private COLLECTION = 'pdf_collection';
 
-  constructor() {
-    console.log('process.env.OPENAI_API_KEY', process.env.OPENAI_API_KEY);
-    this.model = new ChatOpenAI({
+  constructor(private qdrantService: QdrantClientService) {
+    const apiKey = process.env.OPENAI_API_KEY;
+
+    if (!apiKey) {
+      throw new Error('Missing OPENAI_API_KEY');
+    }
+
+    // ✅ Chat model
+    this.chatModel = new ChatOpenAI({
       model: 'gpt-4o-mini',
       temperature: 0.7,
-      apiKey: process.env.OPENAI_API_KEY,
+      apiKey,
+    });
+
+    // ✅ Embedding model (IMPORTANT for Qdrant)
+    this.embeddingModel = new OpenAIEmbeddings({
+      apiKey,
+      model: 'text-embedding-3-small', // 1536 dimensions
     });
   }
 
+  // =========================
+  // 💬 CHAT
+  // =========================
   async chat(prompt: string): Promise<string> {
-    const response = await this.model.invoke([
+    const response = await this.chatModel.invoke([
       new SystemMessage('You are a helpful assistant'),
       new HumanMessage(prompt),
     ]);
 
     return response.content as string;
+  }
+
+  async createVecterCollection(collectionName) {
+    return this.qdrantService.createCollection(collectionName);
+  }
+  /**
+   * 🔥 Embed single text and store into Qdrant
+   */
+  async embedAndStore(text: string[], metadata: any = {}) {
+    if (!text) {
+      throw new Error('Text is empty');
+    }
+
+    // 1. Create embedding
+    const vector = await this.embeddingModel.embedDocuments(text);
+
+    // 2. Save to Qdrant
+    await this.qdrantService.insertVector(this.COLLECTION, vector, text);
+  }
+
+  // =========================
+  // 🧠 EMBEDDING (single)
+  // =========================
+  async embedQuery(text: string): Promise<number[]> {
+    if (!text) throw new Error('Text is empty');
+
+    return this.embeddingModel.embedQuery(text);
+  }
+
+  // =========================
+  // 🧠 EMBEDDING (batch)
+  // =========================
+  async embedDocuments(texts: string[]): Promise<number[][]> {
+    if (!texts?.length) throw new Error('Texts array is empty');
+
+    return this.embeddingModel.embedDocuments(texts);
   }
 }

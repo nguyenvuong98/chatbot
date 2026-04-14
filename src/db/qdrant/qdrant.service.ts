@@ -1,66 +1,84 @@
-import { Injectable, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
+import { Injectable, OnModuleInit } from '@nestjs/common';
 import { QdrantClient } from '@qdrant/js-client-rest';
-import { AppConfigService } from 'src/config/app-config.service';
 
 @Injectable()
-export class QdrantClientService implements OnModuleInit, OnModuleDestroy {
-  private client;
-  constructor(private configService: AppConfigService,) { }
+export class QdrantClientService implements OnModuleInit {
+  private client!: QdrantClient;
+
+  constructor() {}
 
   async onModuleInit(): Promise<void> {
     await this.initializeClient();
   }
 
-  private async initializeClient(): Promise<void> {
-    try {
-      this.client = new QdrantClient({
-        url: this.configService.databaseQdrantInfo.url,
-        apiKey: this.configService.databaseQdrantInfo.apiKey,
-      });
-    } catch (e) {
+  private initializeClient(): void {
+    this.client = new QdrantClient({
+      url: process.env.QDRANT_URI,
+      apiKey: process.env.QDRANT_API_KEY,
+    });
+  }
 
+  // ✅ Create collection (safe: ignore if exists)
+  async createCollection(collectionName: string) {
+    try {
+      const collections = await this.client.getCollections();
+      const exists = collections.collections.some(
+        c => c.name === collectionName,
+      );
+
+      if (exists) {
+        console.log(`Collection ${collectionName} already exists`);
+        return;
+      }
+
+      await this.client.createCollection(collectionName, {
+        vectors: {
+          size: 1536,
+          distance: 'Cosine',
+        },
+      });
+
+      console.log(`Collection ${collectionName} created`);
+    } catch (e) {
+      console.error('createCollection error:', e);
     }
   }
 
-  async createCollection(collectionName: string) {
-    await this.client.createCollection(collectionName, {
-      vectors: {
-        size: 1536,
-        distance: "Cosine"
-      }
-    });
-
-    console.log(`Collection ${collectionName} created`);
-  }
-
-  async insertVector(collectionName: string, body: any) {
-    await this.client.upsert(collectionName, {
-      points: [
-        {
-          id: 1,
-          vector: Array(1536).fill(0.5), // demo vector
-          payload: body
-        }
-      ]
-    });
-
-    console.log("Inserted");
-  }
-
-  async  searchVector(collectionName: string, vector: any) {
-  const result = await this.client.search(collectionName, {
-    vector: Array(1536).fill(0.5),
-    limit: 3
-  });
-
-  console.log(result);
-}
-
-  async onModuleDestroy(): Promise<void> {
+  // ✅ Insert vector (dynamic id)
+  async insertVector(
+    collectionName: string,
+    vectors: number[][] | number[],
+    texts: string[],
+  ) {
     try {
-      await this.client.close();
-    } catch (err) {
-      console.error('close')
+      await this.client.upsert(collectionName, {
+        points: vectors.map((vector, i) => ({
+          id: Date.now() + i,
+          vector: vector, // ✅ single vector
+          payload: {
+            content: texts[i], // ✅ single string
+          },
+        })),
+      });
+
+      console.log('Inserted');
+    } catch (e) {
+      console.error('insertVector error:', e);
+    }
+  }
+
+  // ✅ Search vector (use input vector)
+  async searchVector(collectionName: string, vector: number[]) {
+    try {
+      const result = await this.client.search(collectionName, {
+        vector,
+        limit: 3,
+      });
+
+      return result;
+    } catch (e) {
+      console.error('searchVector error:', e);
+      return [];
     }
   }
 }

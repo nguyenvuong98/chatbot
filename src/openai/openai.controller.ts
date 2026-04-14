@@ -10,4 +10,15 @@ export class OpenaiController {
     const result = await this.openaiService.chat(prompt);
     return { result };
   }
+
+  @Post('embed')
+  async embedContent(@Body('content') content: string[]) {
+    await this.openaiService.embedAndStore(content);
+    return { message: 'embedded successfully' };
+  }
+
+  @Post('create-collection')
+  async createCollection(@Body('collectionName') collectionName: string) {
+    return await this.openaiService.createVecterCollection(collectionName);
+  }
 }

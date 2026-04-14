@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <title>
+    <%= title %>
+  </title>
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial;
+      background: #343541;
+      color: white;
+    }
+
+    .chat-container {
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+    }
+
+    .messages {
+      flex: 1;
+      padding: 20px;
+      overflow-y: auto;
+    }
+
+    .message {
+      margin-bottom: 15px;
+      line-height: 1.5;
+    }
+
+    .user {
+      text-align: right;
+    }
+
+    .bot {
+      text-align: left;
+      color: #10a37f;
+    }
+
+    .input-box {
+      display: flex;
+      padding: 10px;
+      background: #40414f;
+    }
+
+    input {
+      flex: 1;
+      padding: 10px;
+      border: none;
+      outline: none;
+      border-radius: 5px;
+    }
+
+    button {
+      margin-left: 10px;
+      padding: 10px 20px;
+      background: #10a37f;
+      border: none;
+      color: white;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+  </style>
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
+</head>
+
+<body>
+  <div class="chat-container">
+    <div id="messages" class="messages"></div>
+
+    <div class="input-box">
+      <input id="input" placeholder="Type a message..." />
+      <button onclick="sendMessage()">Send</button>
+    </div>
+  </div>
+
+  <script>
+    const baseUrl = 'http://localhost:3000/chat'
+    const messagesDiv = document.getElementById('messages');
+
+    function appendMessage(text, sender) {
+      const div = document.createElement('div');
+      div.className = 'message ' + sender;
+      div.innerText = text;
+      messagesDiv.appendChild(div);
+      messagesDiv.scrollTop = messagesDiv.scrollHeight;
+    }
+
+    async function sendMessage() {
+      const input = document.getElementById('input');
+      const text = input.value;
+      if (!text) return;
+
+      appendMessage(text, 'user');
+      sendMessageApi(text);
+      input.value = '';
+
+      // // fake bot response
+      // setTimeout(() => {
+      //   appendMessage('Bot reply: ' + text, 'bot');
+      // }, 500);
+    }
+
+    const sendMessageApi = async (message) => {
+      const body = {
+        question: message
+      }
+
+      $.ajax({
+        url: baseUrl,
+        type: 'POST',
+        contentType: 'application/json',
+        data: JSON.stringify(body),
+        success: function (res) {
+          console.log('res', res)
+          appendMessage('Bot reply: ' + res?.answer, 'bot');
+        }
+      });
+    }
+  </script>
+</body>
+
+</html>
