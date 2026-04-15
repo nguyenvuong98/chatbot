@@ -19,6 +19,7 @@ export class OpenaiService {
     // ✅ Chat model
     this.chatModel = new ChatOpenAI({
       model: 'gpt-4o-mini',
+      streaming: true,
       temperature: 0.7,
       apiKey,
     });
@@ -40,6 +41,24 @@ export class OpenaiService {
     ]);
 
     return response.content as string;
+  }
+
+  async *chatStream(question: string): AsyncGenerator<string> {
+    const stream = await this.chatModel.stream([
+      new SystemMessage(
+        'You are a job candidate answering interview questions about your own CV',
+      ),
+      new HumanMessage(question),
+    ]);
+
+    for await (const chunk of stream) {
+      const content = chunk.content;
+      if (typeof content === 'string') {
+        yield content;
+      } else if (Array.isArray(content)) {
+        yield content.map((c: any) => c.text || '').join('');
+      }
+    }
   }
 
   async createVecterCollection(collectionName) {
