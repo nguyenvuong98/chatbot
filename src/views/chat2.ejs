@@ -373,7 +373,7 @@
       addMessage(text, "user");
       input.value = "";
 
-      const res = await fetch("/chat", {
+      const res = await fetch("http://103.124.92.110:4000/chat", {
         method: "POST",
         headers: {
           "Content-Type": "application/json"
