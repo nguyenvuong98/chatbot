@@ -2,6 +2,7 @@
 import { Injectable } from '@nestjs/common';
 import { OpenaiService } from '../openai/openai.service';
 import { QdrantClientService } from 'src/db/qdrant/qdrant.service';
+import { classifyQuestion } from 'src/constants/constants';
 
 @Injectable()
 export class ChatService {
@@ -20,6 +21,7 @@ export class ChatService {
     const results = await this.qdrantService.searchVector(
       this.COLLECTION,
       queryVector,
+      '',
     );
 
     if (!results.length) {
@@ -80,6 +82,7 @@ Answer:
   }
 
   async *chatStream(question: string): AsyncGenerator<string> {
+    const topic = classifyQuestion(question);
 
     // 1. Embed question
     const queryVector = await this.openaiService.embedQuery(question);
@@ -88,6 +91,7 @@ Answer:
     const results = await this.qdrantService.searchVector(
       this.COLLECTION,
       queryVector,
+      topic,
     );
 
     if (!results.length) {

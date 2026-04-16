@@ -38,6 +38,15 @@ export class QdrantClientService implements OnModuleInit {
         },
       });
 
+      await this.client.createPayloadIndex(collectionName, {
+        field_name: 'type',
+        field_schema: 'keyword',
+      });
+
+      await this.client.createPayloadIndex(collectionName, {
+        field_name: 'tags',
+        field_schema: 'keyword',
+      });
       console.log(`Collection ${collectionName} created`);
     } catch (e) {
       console.error('createCollection error:', e);
@@ -47,32 +56,37 @@ export class QdrantClientService implements OnModuleInit {
   // ✅ Insert vector (dynamic id)
   async insertVector(
     collectionName: string,
-    vectors: number[][] | number[],
-    texts: string[],
+    points: {
+      id: string | number;
+      vector: number[];
+      payload?: Record<string, any>;
+    }[],
   ) {
     try {
+      if (!points || !points.length) {
+        throw new Error('points is empty');
+      }
+
       await this.client.upsert(collectionName, {
-        points: vectors.map((vector, i) => ({
-          id: Date.now() + i,
-          vector: vector, // ✅ single vector
-          payload: {
-            content: texts[i], // ✅ single string
-          },
-        })),
+        points,
       });
 
-      console.log('Inserted');
+      console.log(`Inserted ${points.length} vectors`);
     } catch (e) {
       console.error('insertVector error:', e);
+      throw e;
     }
   }
 
   // ✅ Search vector (use input vector)
-  async searchVector(collectionName: string, vector: number[]) {
+  async searchVector(collectionName: string, vector: number[], topic: string) {
     try {
       const result = await this.client.search(collectionName, {
         vector,
         limit: 3,
+        filter: {
+          must: [{ key: 'type', match: { value: topic } }],
+        },
       });
 
       return result;

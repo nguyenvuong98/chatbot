@@ -2,6 +2,8 @@ import { Injectable } from '@nestjs/common';
 import { ChatOpenAI, OpenAIEmbeddings } from '@langchain/openai';
 import { HumanMessage, SystemMessage } from '@langchain/core/messages';
 import { QdrantClientService } from 'src/db/qdrant/qdrant.service';
+import { ImportVectorDto } from './openai.dto';
+import { classifyQuestion } from 'src/constants/constants';
 
 @Injectable()
 export class OpenaiService {
@@ -67,16 +69,35 @@ export class OpenaiService {
   /**
    * 🔥 Embed single text and store into Qdrant
    */
-  async embedAndStore(text: string[], metadata: any = {}) {
-    if (!text) {
-      throw new Error('Text is empty');
+  async embedAndStore(dto: ImportVectorDto) {
+    const items = dto.items;
+
+    if (!items || !items.length) {
+      throw new Error('items is empty');
     }
 
-    // 1. Create embedding
-    const vector = await this.embeddingModel.embedDocuments(text);
+    // 1. Lấy content
+    const texts = items.map((i: any) => i.content.trim());
 
-    // 2. Save to Qdrant
-    await this.qdrantService.insertVector(this.COLLECTION, vector, text);
+    // 2. Embed (batch)
+    const vectors = await this.embeddingModel.embedDocuments(texts);
+
+    // 3. Map sang format Qdrant
+    const points = items.map((item, index) => ({
+      id: crypto.randomUUID(), // hoặc tự generate
+      vector: vectors[index],
+      payload: {
+        content: item.content,
+        ...(item.metadata || {}),
+      },
+    }));
+
+    // 4. Insert
+    await this.qdrantService.insertVector(this.COLLECTION, points);
+
+    return {
+      count: points.length,
+    };
   }
 
   // =========================

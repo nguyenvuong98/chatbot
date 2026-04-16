@@ -1,5 +1,6 @@
 import { Body, Controller, Post } from '@nestjs/common';
 import { OpenaiService } from './openai.service';
+import { ImportVectorDto } from './openai.dto';
 
 @Controller('openai')
 export class OpenaiController {
@@ -12,8 +13,8 @@ export class OpenaiController {
   }
 
   @Post('embed')
-  async embedContent(@Body('content') content: string[]) {
-    await this.openaiService.embedAndStore(content);
+  async embedContent(@Body() input: ImportVectorDto) {
+    await this.openaiService.embedAndStore(input);
     return { message: 'embedded successfully' };
   }
 
