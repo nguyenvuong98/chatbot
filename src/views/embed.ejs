@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+	<meta charset="UTF-8">
+	<title>Import Embed</title>
+
+	<style>
+		body {
+			font-family: system-ui, -apple-system, sans-serif;
+			background: #f7f7f8;
+			margin: 0;
+		}
+
+		.container {
+			max-width: 800px;
+			margin: 40px auto;
+			background: white;
+			border-radius: 12px;
+			padding: 20px 24px;
+			box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+		}
+
+		h2 {
+			margin-top: 0;
+			font-size: 18px;
+		}
+
+		select {
+			padding: 10px 14px;
+			border-radius: 8px;
+			border: 1px solid #ddd;
+			background: white;
+			font-size: 14px;
+			margin-bottom: 20px;
+		}
+
+		.embed-item {
+			border: 1px solid #00000030;
+			padding: 15px;
+			border-radius: 5px;
+			margin-bottom: 5px;
+		}
+
+		.row {
+			display: flex;
+			align-items: flex-start;
+			margin-bottom: 12px;
+		}
+
+		textarea {
+			flex: 1;
+			min-height: 70px;
+			border-radius: 12px;
+			border: 1px solid #ddd;
+			padding: 12px 14px;
+			font-size: 14px;
+			outline: none;
+			resize: none;
+			background: white;
+			transition: border 0.2s;
+		}
+
+		textarea:focus {
+			border-color: #10a37f;
+		}
+
+		.action-btn {
+			width: 36px;
+			height: 36px;
+			margin-left: 8px;
+			border-radius: 10px;
+			border: 1px solid #ddd;
+			background: white;
+			cursor: pointer;
+			font-size: 18px;
+		}
+
+		.action-btn:hover {
+			background: #f0f0f0;
+		}
+
+		.submit-btn {
+			margin-top: 20px;
+			padding: 10px 18px;
+			background: #10a37f;
+			color: white;
+			border: none;
+			border-radius: 999px;
+			cursor: pointer;
+			font-size: 14px;
+		}
+
+		.submit-btn:hover {
+			opacity: 0.9;
+		}
+	</style>
+</head>
+
+<body>
+
+	<div class="container">
+		<h2>Import Data to Embed</h2>
+
+		<div>
+			<!-- LIST -->
+			<div id="list">
+			</div>
+
+			<button type="submit" class="submit-btn" onclick="onSubmit()">Import</button>
+
+		</div>
+	</div>
+
+	<script>
+		function addRow() {
+			const div = document.createElement('div');
+			div.className = 'embed-item';
+
+			div.innerHTML = `
+				<div>
+						<select name="topics[]">
+						<% topics.forEach(item => { %>
+						<option value="<%= item.value %>"><%= item.label %></option>
+						<% }) %>
+					</select>
+				</div>
+				<div class='row'>
+					<textarea name="contents[]" placeholder="Nhập nội dung để embed..."></textarea>
+					<button type="button" class="action-btn" onclick="addRow()">+</button>
+					<button type="button" class="action-btn" onclick="removeRow(this)">-</button>
+				</div>
+			`;
+
+			document.getElementById('list').appendChild(div);
+		}
+
+		function removeRow(btn) {
+			const list = document.getElementById('list');
+			if (list.children.length === 1) return;
+
+			console.log('btn.parentElement', btn.parentElement)
+			btn.parentElement.parentElement.remove();
+		}
+
+		async function onSubmit() {
+			const topics = Array.from(document.querySelectorAll('select[name="topics[]"]'))
+				.map(el => el.value);
+
+			const contents = Array.from(document.querySelectorAll('textarea[name="contents[]"]'))
+				.map(el => el.value.trim());
+
+			// filter bỏ dòng rỗng
+			const data = contents
+				.map((content, i) => ({
+					metadata: { type: topics[i]},
+					content
+				}))
+				.filter(item => item.content.length > 0);
+
+			if (data.length === 0) {
+				alert('Vui lòng nhập ít nhất 1 nội dung');
+				return;
+			}
+
+			try {
+				const res = await fetch('/openai/embed', {
+					method: 'POST',
+					headers: {
+						'Content-Type': 'application/json'
+					},
+					body: JSON.stringify({ items: data })
+				});
+
+				const result = await res.json();
+
+				console.log(result);
+				alert('Import thành công 🚀');
+
+			} catch (err) {
+				console.error(err);
+				alert('Có lỗi xảy ra');
+			}
+		}
+		// auto resize textarea giống chatGPT
+		document.addEventListener('input', function (e) {
+			if (e.target.tagName.toLowerCase() === 'textarea') {
+				e.target.style.height = 'auto';
+				e.target.style.height = e.target.scrollHeight + 'px';
+			}
+		});
+		window.onload = () => {
+			addRow();
+		}
+	</script>
+
+</body>
+
+</html>

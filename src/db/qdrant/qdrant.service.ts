@@ -1,5 +1,6 @@
 import { Injectable, OnModuleInit } from '@nestjs/common';
 import { QdrantClient } from '@qdrant/js-client-rest';
+import { CursorDto, DeleteByIdsDto } from './qdrant.dto';
 
 @Injectable()
 export class QdrantClientService implements OnModuleInit {
@@ -23,7 +24,7 @@ export class QdrantClientService implements OnModuleInit {
     try {
       const collections = await this.client.getCollections();
       const exists = collections.collections.some(
-        c => c.name === collectionName,
+        (c) => c.name === collectionName,
       );
 
       if (exists) {
@@ -94,5 +95,35 @@ export class QdrantClientService implements OnModuleInit {
       console.error('searchVector error:', e);
       return [];
     }
+  }
+
+  async getByCursor(input: CursorDto) {
+    const {
+      collectionName,
+      limit = 10,
+      cursor = null,
+      filter,
+      withVector,
+    } = input;
+    const res = await this.client.scroll(collectionName, {
+      limit,
+      offset: cursor,
+      filter,
+      with_payload: true,
+      with_vector: withVector,
+    });
+
+    return {
+      data: res.points,
+      nextCursor: res.next_page_offset ?? null,
+      hasNext: !!res.next_page_offset,
+    };
+  }
+
+  deleteManyByIds(input: DeleteByIdsDto) {
+    const { collectionName, ids } = input;
+    return this.client.delete(collectionName, {
+      points: ids,
+    });
   }
 }
