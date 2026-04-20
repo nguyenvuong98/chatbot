@@ -32,6 +32,40 @@ export const CV_TOPICS = [
   'career_goal',
 ];
 
+export const CV_TOPICS_OPTIONS = [
+  { label: 'Thông tin cá nhân', value: 'personal_info' },
+
+  { label: 'Tóm tắt bản thân', value: 'summary' },
+
+  // experience
+  { label: 'Kinh nghiệm làm việc', value: 'experience' },
+  { label: 'Trách nhiệm công việc', value: 'responsibility' },
+  { label: 'Thành tựu (công việc)', value: 'achievement_exp' },
+
+  // project
+  { label: 'Dự án', value: 'project' },
+  { label: 'Vai trò trong dự án', value: 'project_role' },
+  { label: 'Công nghệ sử dụng', value: 'project_tech' },
+  { label: 'Kết quả dự án', value: 'project_result' },
+
+  // skill
+  { label: 'Kỹ năng', value: 'skill' },
+  { label: 'Kỹ năng chuyên môn', value: 'technical_skill' },
+  { label: 'Kỹ năng mềm', value: 'soft_skill' },
+
+  // education
+  { label: 'Học vấn', value: 'education' },
+
+  // others
+  { label: 'Chứng chỉ', value: 'certificate' },
+  { label: 'Giải thưởng', value: 'award' },
+  { label: 'Hoạt động', value: 'activity' },
+  { label: 'Ngôn ngữ', value: 'language' },
+
+  // meta
+  { label: 'Mục tiêu nghề nghiệp', value: 'career_goal' },
+];
+
 type CvTopic = (typeof CV_TOPICS)[number];
 
 export const TOPIC_KEYWORDS: Record<CvTopic, string[]> = {

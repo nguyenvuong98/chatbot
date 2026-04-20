@@ -5,9 +5,16 @@ import { OpenaiModule } from './openai/openai.module';
 import { ConfigModule } from '@nestjs/config';
 import { PdfModule } from './pdf/pdf.module';
 import { ChatModule } from './chat/chat.module';
+import { QDrantModule } from './db/qdrant/qdrant.module';
 
 @Module({
-  imports: [OpenaiModule, ConfigModule.forRoot(), PdfModule, ChatModule],
+  imports: [
+    OpenaiModule,
+    ConfigModule.forRoot(),
+    PdfModule,
+    ChatModule,
+    QDrantModule,
+  ],
   controllers: [AppController],
   providers: [AppService],
 })
