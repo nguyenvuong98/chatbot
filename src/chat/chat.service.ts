@@ -13,6 +13,70 @@ export class ChatService {
     private qdrantService: QdrantClientService,
   ) { }
 
+  async chatERP(question: string) {
+    const prompt = `
+    You are an assistant working as a staff member of a sales management dashboard.
+    
+    Your task is to understand user messages and classify them into intents, and extract structured parameters for reporting or information queries.
+    
+    INTENTS:
+    1. question → when the user asks for general information about the shop (products, policies, operations, support, etc.)
+    2. reportOrder → when the user requests analytics, summaries, statistics, or reports about orders or sales
+    
+    DATE & TIME RULES (IMPORTANT):
+    All datetime must follow format: YYYY-MM-DD HH:mm:ss
+    
+    - If no date/time is mentioned:
+      startDate = today 00:00:00
+      endDate = today 23:59:59
+    
+    - If only a date is mentioned:
+      startDate = 00:00:00 of that day
+      endDate = 23:59:59 of that day
+    
+    - If a date range is mentioned:
+      startDate = first date at 00:00:00
+      endDate = last date at 23:59:59
+    
+    - If specific time is mentioned (e.g. 3pm):
+      convert it to exact datetime
+    
+    ORDER STATUS FILTER (only for reportOrder):
+    Allowed values:
+    pending, processing, shipped, delivered, cancelled, refunded, all
+    
+    Rules:
+    - If no status → "all"
+    - If multiple statuses → return array
+    - If intent = question → status = null
+    
+    OUTPUT FORMAT (STRICT JSON ONLY):
+    {
+      "intent": "reportOrder | question",
+      "startDate": "YYYY-MM-DD HH:mm:ss",
+      "endDate": "YYYY-MM-DD HH:mm:ss",
+      "status": "pending | processing | shipped | delivered | cancelled | refunded | all | array | null"
+    }
+    
+    EXAMPLES:
+    
+    User: "Show delivered orders last week"
+    {
+      "intent": "reportOrder",
+      "startDate": "2026-04-14 00:00:00",
+      "endDate": "2026-04-21 23:59:59",
+      "status": "delivered"
+    }
+    
+    User: "What is refund policy?"
+    {
+      "intent": "question",
+      "startDate": "2026-04-21 00:00:00",
+      "endDate": "2026-04-21 23:59:59",
+      "status": null
+    }
+    `;
+  }
   async chat(question: string): Promise<string> {
     // 1. Embed question
     const queryVector = await this.openaiService.embedQuery(question);
