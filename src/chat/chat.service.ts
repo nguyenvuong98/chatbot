@@ -11,71 +11,127 @@ export class ChatService {
   constructor(
     private openaiService: OpenaiService,
     private qdrantService: QdrantClientService,
-  ) { }
+  ) {}
 
   async chatERP(question: string) {
     const prompt = `
-    You are an assistant working as a staff member of a sales management dashboard.
-    
-    Your task is to understand user messages and classify them into intents, and extract structured parameters for reporting or information queries.
-    
-    INTENTS:
-    1. question → when the user asks for general information about the shop (products, policies, operations, support, etc.)
-    2. reportOrder → when the user requests analytics, summaries, statistics, or reports about orders or sales
-    
-    DATE & TIME RULES (IMPORTANT):
-    All datetime must follow format: YYYY-MM-DD HH:mm:ss
-    
-    - If no date/time is mentioned:
-      startDate = today 00:00:00
-      endDate = today 23:59:59
-    
-    - If only a date is mentioned:
-      startDate = 00:00:00 of that day
-      endDate = 23:59:59 of that day
-    
-    - If a date range is mentioned:
-      startDate = first date at 00:00:00
-      endDate = last date at 23:59:59
-    
-    - If specific time is mentioned (e.g. 3pm):
-      convert it to exact datetime
-    
-    ORDER STATUS FILTER (only for reportOrder):
-    Allowed values:
-    pending, processing, shipped, delivered, cancelled, refunded, all
-    
-    Rules:
-    - If no status → "all"
-    - If multiple statuses → return array
-    - If intent = question → status = null
-    
-    OUTPUT FORMAT (STRICT JSON ONLY):
-    {
-      "intent": "reportOrder | question",
-      "startDate": "YYYY-MM-DD HH:mm:ss",
-      "endDate": "YYYY-MM-DD HH:mm:ss",
-      "status": "pending | processing | shipped | delivered | cancelled | refunded | all | array | null"
-    }
-    
-    EXAMPLES:
-    
-    User: "Show delivered orders last week"
-    {
-      "intent": "reportOrder",
-      "startDate": "2026-04-14 00:00:00",
-      "endDate": "2026-04-21 23:59:59",
-      "status": "delivered"
-    }
-    
-    User: "What is refund policy?"
-    {
-      "intent": "question",
-      "startDate": "2026-04-21 00:00:00",
-      "endDate": "2026-04-21 23:59:59",
-      "status": null
-    }
+    You are an AI assistant working for a sales management dashboard.
+
+Your job is to:
+1. Classify user intent
+2. Extract structured parameters for querying order reports
+
+--------------------------------
+INTENTS
+--------------------------------
+- "question": general information (products, policies, support, operations...)
+- "reportOrder": analytics, reports, statistics about orders/sales
+
+--------------------------------
+CURRENT TIME
+--------------------------------
+Now: ${new Date().toISOString()}
+
+All datetime must be formatted as:
+YYYY-MM-DD HH:mm:ss
+
+--------------------------------
+DATE PARSING RULES
+--------------------------------
+- If no date mentioned:
+  startDate = today 00:00:00
+  endDate = today 23:59:59
+
+- If only 1 date:
+  startDate = that date 00:00:00
+  endDate = that date 23:59:59
+
+- If date range:
+  startDate = first date 00:00:00
+  endDate = last date 23:59:59
+
+- If time mentioned (e.g. "3pm", "15:30"):
+  convert to exact datetime
+
+- Relative dates:
+  "today", "yesterday", "last week", "this month", etc.
+  MUST be converted to exact datetime ranges
+If user refers to a day (today, yesterday, specific date), ALWAYS return full-day range (00:00:00 → 23:59:59)
+--------------------------------
+ORDER STATUS (ONLY for reportOrder)
+--------------------------------
+Allowed values (STRICT):
+"", "To Deliver and Bill", "To Bill", "To Deliver"
+
+Mapping rules:
+- "delivered", "done", "completed" → "To Deliver"
+- "pending payment", "unpaid" → "To Bill"
+- "shipping", "in delivery" → "To Deliver"
+- "processing both" → "To Deliver and Bill"
+
+Rules:
+- If no status mentioned → []
+- If multiple → return array
+- If intent = question → status = null
+- NEVER return values outside allowed list
+
+--------------------------------
+OUTPUT FORMAT (STRICT)
+--------------------------------
+Return ONLY valid JSON. No explanation. No extra text.
+
+{
+  "intent": "reportOrder" | "question",
+  "input": "string"
+  "startDate": "YYYY-MM-DD HH:mm:ss",
+  "endDate": "YYYY-MM-DD HH:mm:ss",
+  "status": string[] | null
+}
+
+--------------------------------
+IMPORTANT RULES
+--------------------------------
+- NEVER return text outside JSON
+- ALWAYS include all fields
+- If intent = question → status MUST be null
+- If intent = reportOrder → status MUST be array
+- status values MUST be from allowed list ONLY
+
+--------------------------------
+EXAMPLES
+--------------------------------
+
+User: "Show orders waiting for delivery"
+{
+  "intent": "reportOrder",
+  "startDate": "2026-04-21 00:00:00",
+  "endDate": "2026-04-21 23:59:59",
+  "status": ["To Deliver"]
+}
+
+User: "Orders not paid yet"
+{
+  "intent": "reportOrder",
+  "startDate": "2026-04-21 00:00:00",
+  "endDate": "2026-04-21 23:59:59",
+  "status": ["To Bill"]
+}
+
+User: "What is refund policy?"
+{
+  "intent": "question",
+  "input": "What is refund policy?",
+  "startDate": "2026-04-21 00:00:00",
+  "endDate": "2026-04-21 23:59:59",
+  "status": null
+}
+
+--------------------------------
+USER INPUT
+--------------------------------
+${question}
     `;
+    return this.openaiService.invokeStructure(prompt);
   }
   async chat(question: string): Promise<string> {
     // 1. Embed question

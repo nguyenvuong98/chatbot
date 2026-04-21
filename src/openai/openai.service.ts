@@ -8,6 +8,7 @@ import { classifyQuestion } from 'src/constants/constants';
 @Injectable()
 export class OpenaiService {
   private chatModel: ChatOpenAI;
+  private structureModel: ChatOpenAI;
   private embeddingModel: OpenAIEmbeddings;
   private COLLECTION = 'pdf_collection';
 
@@ -23,6 +24,12 @@ export class OpenaiService {
       model: 'gpt-4o-mini',
       streaming: true,
       temperature: 0.7,
+      apiKey,
+    });
+
+    this.structureModel = new ChatOpenAI({
+      model: 'gpt-4o',
+      temperature: 0,
       apiKey,
     });
 
@@ -45,6 +52,20 @@ export class OpenaiService {
     return response.content as string;
   }
 
+  cleanJson(text: string) {
+    return text
+      .replace(/```json/g, '')
+      .replace(/```/g, '')
+      .trim();
+  }
+  async invokeStructure(prompt: string): Promise<string> {
+    const response = await this.structureModel.invoke([
+      new SystemMessage('You are a helpful assistant'),
+      new HumanMessage(prompt),
+    ]);
+
+    return JSON.parse(this.cleanJson(response.content as string));
+  }
   async *chatStream(question: string): AsyncGenerator<string> {
     const stream = await this.chatModel.stream([
       new SystemMessage(

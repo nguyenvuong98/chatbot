@@ -21,6 +21,13 @@ export class ChatController {
     res.end();
   }
 
+  @Post('/derp')
+  async chatDerp(@Body('question') question: string) {
+    const res = await this.chatService.chatERP(question);
+    console.log('res', res);
+    return res;
+  }
+
   @Get()
   @Render('chat2')
   renderChat() {
